@@ -1,0 +1,4 @@
+__pycache__
+block_kernels.egg-info
+*.pyc
+*.so
