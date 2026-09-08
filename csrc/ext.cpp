@@ -14,6 +14,8 @@ std::vector<torch::Tensor> cpu_block_bounds(torch::Tensor, torch::Tensor, torch:
 torch::Tensor remap_cpu_rows(torch::Tensor, torch::Tensor);
 torch::Tensor expand_cpu_ranges(torch::Tensor, torch::Tensor, bool);
 torch::Tensor concat_cpu_rows(const std::vector<torch::Tensor>&);
+std::vector<torch::Tensor> repack_cpu_blocks(const std::vector<torch::Tensor>&,
+                                          torch::Tensor, torch::Tensor, int64_t);
 void commit_cpu_block_tasks(const std::vector<torch::Tensor>&, const std::vector<torch::Tensor>&,
                             const std::vector<torch::Tensor>&, const std::vector<torch::Tensor>&,
                             const std::vector<torch::Tensor>&, int64_t);
@@ -36,6 +38,7 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, module) {
   module.def("expand_cpu_ranges", &expand_cpu_ranges,
              pybind11::arg("starts"), pybind11::arg("counts"), pybind11::arg("int32_output") = false);
   module.def("concat_cpu_rows", &concat_cpu_rows);
+  module.def("repack_cpu_blocks", &repack_cpu_blocks);
   module.def("commit_cpu_block_tasks", &commit_cpu_block_tasks);
   module.def("densify_cpu_stage1", &densify_cpu_stage1);
   module.def("densify_cpu_stage2", &densify_cpu_stage2);

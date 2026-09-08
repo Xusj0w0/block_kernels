@@ -160,6 +160,13 @@ def commit_cpu_block_tasks(tables, mappings, geometry, sh, destinations, block_s
     _C.commit_cpu_block_tasks(tables, mappings, geometry, sh, destinations, block_size)
 
 
+def repack_cpu_blocks(tables, order, counts, block_size):
+    """Reorder parameters and moments in place, pack full blocks and rebuild bounds."""
+    if _C is None or not hasattr(_C, "repack_cpu_blocks"):
+        raise RuntimeError("rebuild block_kernels for final Morton repacking")
+    return _C.repack_cpu_blocks(tables, order, counts, block_size)
+
+
 class DensityBlockPlan(NamedTuple):
     counts: torch.Tensor
     overflow_ids: torch.Tensor
@@ -214,6 +221,7 @@ __all__ = [
     "expand_cpu_ranges",
     "concat_cpu_rows",
     "commit_cpu_block_tasks",
+    "repack_cpu_blocks",
     "densify_cpu_stage1",
     "densify_cpu_stage2",
     "update_metadata_from_geometry",

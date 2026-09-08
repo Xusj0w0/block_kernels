@@ -36,6 +36,15 @@ state table, and masked scatter. `expand_cpu_ranges` writes CPU int64 point IDs
 directly from `(start, count)` ranges without point-sized intermediate maps.
 Both are CPU-only OpenMP kernels; neither allocates CUDA tensors.
 
+`repack_cpu_blocks(tables, order, counts, block_size)` applies a unique int64
+destination-to-source order to geometry, SH and optional Adam moment tables in
+place. It validates that the mapping covers exactly the live block prefixes,
+then handles permutation paths and cycles using bitsets and one scratch row per
+table. Tables run in parallel and must have disjoint contiguous float32 CPU
+storage with the same capacity. It clears vacated assigned slots and returns
+full-block counts (except the last block) and fresh three-sigma AABB bounds.
+Preallocated table addresses remain unchanged.
+
 `concat_cpu_rows` copies large lists of CPU float32/int64 block views in parallel
 to ordinary unpinned CPU storage. It supports strided rows/columns and delegates
 unsupported dtypes, type promotion, and autograd inputs to `torch.cat`.
