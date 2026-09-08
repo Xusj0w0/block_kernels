@@ -13,8 +13,12 @@ setup(
     ext_modules=[
         CUDAExtension(
             "_block_kernels_C",
-            [str(ROOT / "csrc/block_transfer.cu"), str(ROOT / "csrc/ext.cpp")],
-            extra_compile_args={"cxx": ["-O3"], "nvcc": ["-O3"]},
+            [str(ROOT / "csrc/block_transfer.cu"), str(ROOT / "csrc/ext.cpp"),
+             str(ROOT / "csrc/block_metadata.cpp"), str(ROOT / "csrc/gpu_block_metadata.cu"),
+             str(ROOT / "csrc/cpu_row_mapping.cpp"), str(ROOT / "csrc/cpu_block_tasks.cpp"),
+             str(ROOT / "csrc/cpu_densification.cpp")],
+            extra_compile_args={"cxx": ["-O3", "-fopenmp"], "nvcc": ["-O3"]},
+            extra_link_args=["-fopenmp"],
         )
     ],
     cmdclass={"build_ext": BuildExtension},

@@ -131,7 +131,7 @@ __global__ void mark_compact_mask_kernel(
     const int32_t* radii,
     const int64_t* block_ids,
     const int64_t* compact_starts,
-    const int64_t* block_offsets,
+    int64_t num_radii,
     const int64_t* block_word_offsets,
     int64_t num_visible_blocks,
     uint32_t* mask_words) {
@@ -140,7 +140,9 @@ __global__ void mark_compact_mask_kernel(
        block_rank += gridDim.x) {
     const int64_t compact_start = compact_starts[block_rank];
     const int64_t block = block_ids[block_rank];
-    const int64_t count = block_offsets[block + 1] - block_offsets[block];
+    const int64_t compact_end = block_rank + 1 < num_visible_blocks
+        ? compact_starts[block_rank + 1] : num_radii;
+    const int64_t count = compact_end - compact_start;
     const int64_t word_start = block_word_offsets[block];
     for (int64_t row = threadIdx.x;
          row < count;
@@ -205,7 +207,7 @@ void mark_compact_mask(
     mark_compact_mask_kernel<<<blocks, threads, 0, stream>>>(
         radii.data_ptr<int32_t>(), block_ids.data_ptr<int64_t>(),
         compact_starts.data_ptr<int64_t>(),
-        block_offsets.data_ptr<int64_t>(),
+        radii.numel(),
         block_word_offsets.data_ptr<int64_t>(), block_ids.numel(),
         reinterpret_cast<uint32_t*>(device_mask.data_ptr<int32_t>()));
     C10_CUDA_KERNEL_LAUNCH_CHECK();
@@ -255,6 +257,40 @@ void check_fixed_grid_inputs(
               source_starts.numel() == counts.numel(),
               "block descriptors must have equal lengths");
   TORCH_CHECK(input.size(1) == output.size(1), "column count mismatch");
+}
+
+__global__ void accumulate_rows_kernel(
+    const float* input, float* output, const int64_t* source,
+    const int64_t* destination, int64_t rows, int64_t columns) {
+  const int64_t stride = gridDim.x * blockDim.x;
+  for (int64_t i = blockIdx.x * blockDim.x + threadIdx.x;
+       i < rows * columns; i += stride) {
+    const int64_t row = i / columns;
+    const int64_t col = i % columns;
+    output[destination[row] * columns + col] += input[source[row] * columns + col];
+  }
+}
+
+void accumulate_d2h_rows(torch::Tensor host, torch::Tensor input,
+                         torch::Tensor source, torch::Tensor destination,
+                         uintptr_t stream_ptr) {
+  TORCH_CHECK(input.is_cuda() && !host.is_cuda() && host.is_pinned(),
+              "expected CUDA input and pinned host output");
+  TORCH_CHECK(input.dim() == 2 && host.dim() == 2 && input.size(1) == host.size(1),
+              "input and output must have the same row width");
+  TORCH_CHECK(input.scalar_type() == torch::kFloat32 && host.scalar_type() == torch::kFloat32 &&
+              input.is_contiguous() && host.is_contiguous(), "expected contiguous float32 tables");
+  TORCH_CHECK(source.is_cuda() && destination.is_cuda() &&
+              source.device() == input.device() && destination.device() == input.device() &&
+              source.scalar_type() == torch::kInt64 && destination.scalar_type() == torch::kInt64 &&
+              source.is_contiguous() && destination.is_contiguous() &&
+              source.numel() == destination.numel(), "expected matching CUDA int64 row IDs");
+  if (!source.numel()) return;
+  const auto stream = reinterpret_cast<cudaStream_t>(stream_ptr);
+  accumulate_rows_kernel<<<32, 256, 0, stream>>>(
+      input.data_ptr<float>(), host.data_ptr<float>(), source.data_ptr<int64_t>(),
+      destination.data_ptr<int64_t>(), source.numel(), input.size(1));
+  C10_CUDA_KERNEL_LAUNCH_CHECK();
 }
 
 __global__ void fixed_grid_accumulate_blocks_kernel(
