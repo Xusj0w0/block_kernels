@@ -14,6 +14,14 @@ python -m pip install --no-build-isolation --no-deps --force-reinstall submodule
 The compiled extension is required for training. The Python DMA fallback is
 intended for diagnostics; mapped-host gradient accumulation requires CUDA.
 
+The same extension now owns the C++/OpenMP LoD hierarchy initializer. Its
+`initialize_lod_arrays` and `initialize_lod_ply` bindings are wrapped by
+`block_kernels.initialize_blocks`; LoD initialization no longer performs a
+separate runtime JIT build. The PLY path uses per-block byte offsets and
+`pread`; the array path accepts fixed-slot block starts and may safely rewrite
+the same leaf tables in place because each worker copies its complete source
+block to private scratch before producing output.
+
 The extension exposes DMA `copy_h2d_ranges`, `copy_d2h_ranges`, and
 `copy_d2d_ranges`, plus `fixed_grid_accumulate_d2h_blocks` for fixed-grid mapped-host
 gradient accumulation.

@@ -10,6 +10,8 @@ try:
 except ImportError:  # Optional during CPU-only unit tests.
     _C = None
 
+from .lod_initialize import LOD_INITIALIZER, initialize_blocks
+
 
 def _as_cpu_long(value):
     return torch.as_tensor(value, dtype=torch.int64).detach().cpu().flatten()
@@ -210,6 +212,8 @@ def update_metadata_from_geometry(geometry, ranges, aabb_min, aabb_max, centers,
 
 
 __all__ = [
+    "LOD_INITIALIZER",
+    "initialize_blocks",
     "dma_copy_d2d_ranges",
     "dma_copy_d2h_ranges",
     "dma_copy_h2d_ranges",

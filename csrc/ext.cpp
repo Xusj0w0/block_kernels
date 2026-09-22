@@ -1,6 +1,8 @@
 #include <torch/extension.h>
 #include <cstdint>
 
+void bind_lod_initialize(pybind11::module_&);
+
 void copy_h2d_ranges(torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor, uintptr_t);
 void copy_d2h_ranges(torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor, uintptr_t);
 void copy_d2d_ranges(torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor, uintptr_t);
@@ -27,6 +29,7 @@ void update_metadata_from_geometry(torch::Tensor, torch::Tensor, torch::Tensor,
                                    torch::Tensor, torch::Tensor, torch::Tensor, uintptr_t);
 
 PYBIND11_MODULE(TORCH_EXTENSION_NAME, module) {
+  bind_lod_initialize(module);
   module.def("copy_h2d_ranges", &copy_h2d_ranges);
   module.def("copy_d2h_ranges", &copy_d2h_ranges);
   module.def("copy_d2d_ranges", &copy_d2d_ranges);
